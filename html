@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alat Musik ASEAN</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&amp;family=Noto+Serif:ital,wght@0,400;1,400&amp;display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Outfit', sans-serif; }
+
+    .drag-item { cursor: grab; user-select: none; transition: transform 0.2s, box-shadow 0.2s; }
+    .drag-item:active { cursor: grabbing; }
+    .drag-item.dragging { opacity: 0.5; transform: scale(1.05); }
+    .drop-zone { transition: background 0.2s, border-color 0.2s; }
+    .drop-zone.drag-over { border-color: #f59e0b !important; background: rgba(245,158,11,0.1) !important; }
+    .drop-zone.correct { border-color: #22c55e !important; background: rgba(34,197,94,0.12) !important; }
+    .drop-zone.wrong { animation: shake 0.4s; }
+
+    .match-card { cursor: pointer; transition: all 0.2s; }
+    .match-card:hover { transform: translateY(-2px); }
+    .match-card.selected { ring: 2px; box-shadow: 0 0 0 3px #f59e0b; }
+    .match-card.matched { opacity: 0.5; pointer-events: none; border-color: #22c55e !important; }
+
+    .option-btn { transition: all 0.15s; }
+    .option-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .option-btn.correct-answer { background: #22c55e !important; color: white !important; border-color: #22c55e !important; }
+    .option-btn.wrong-answer { background: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
+
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    .pulse-anim { animation: pulse 1.5s infinite; }
+
+    .materi-card { animation: fadeUp 0.5s ease-out both; }
+    .materi-card:nth-child(1) { animation-delay: 0.1s; }
+    .materi-card:nth-child(2) { animation-delay: 0.2s; }
+    .materi-card:nth-child(3) { animation-delay: 0.3s; }
+
+    .progress-fill { transition: width 0.6s ease; }
+    .toast { animation: fadeUp 0.3s ease-out; }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full overflow-auto">
+  <div id="app" class="h-full w-full min-h-full" style="background: #0f172a;"><!-- Toast -->
+   <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden toast">
+    <div id="toast-inner" class="px-5 py-3 rounded-xl font-semibold text-white shadow-lg flex items-center gap-2"></div>
+   </div><!-- SCREEN: Start -->
+   <div id="screen-start" class="flex flex-col items-center justify-center h-full p-6 text-center">
+    <div class="fade-up">
+     <div class="text-6xl mb-4">
+      🎵
+     </div>
+     <h1 id="title-text" class="text-4xl md:text-5xl font-extrabold mb-3" style="color: #f59e0b;">Alat Musik ASEAN</h1>
+     <p class="text-lg mb-8" style="color: #94a3b8;">Kenali alat musik tradisional dari Asia Tenggara</p><button onclick="showScreen('materi')" class="px-8 py-3 rounded-xl font-bold text-lg pulse-anim" style="background: #f59e0b; color: #0f172a;"> Mulai Belajar <i data-lucide="arrow-right" style="width:20px;height:20px;display:inline-block;vertical-align:middle;margin-left:4px;"></i> </button>
+    </div>
+   </div><!-- SCREEN: Materi -->
+   <div id="screen-materi" class="hidden h-full p-6 overflow-auto">
+    <div class="max-w-2xl mx-auto">
+     <h2 class="text-2xl font-bold mb-1" style="color: #f59e0b;">📖 Materi</h2>
+     <p class="mb-6" style="color: #94a3b8;">Pelajari alat musik berikut sebelum memulai tantangan!</p>
+     <div id="materi-list" class="space-y-4 mb-8"></div>
+     <div class="text-center"><button onclick="startLevel(1)" class="px-8 py-3 rounded-xl font-bold" style="background: #f59e0b; color: #0f172a;"> Mulai Tantangan <i data-lucide="zap" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-left:4px;"></i> </button>
+     </div>
+    </div>
+   </div><!-- SCREEN: Level 1 - Drag & Drop -->
+   <div id="screen-level1" class="hidden h-full p-6 overflow-auto">
+    <div class="max-w-2xl mx-auto">
+     <div class="flex items-center justify-between mb-2">
+      <h2 class="text-xl font-bold" style="color: #f59e0b;">Level 1: Drag &amp; Drop</h2><span id="l1-score" class="text-sm font-semibold px-3 py-1 rounded-full" style="background: #1e293b; color: #94a3b8;">0/2</span>
+     </div>
+     <div class="w-full rounded-full h-2 mb-6" style="background: #1e293b;">
+      <div id="l1-progress" class="h-2 rounded-full progress-fill" style="background: #f59e0b; width: 0%;"></div>
+     </div>
+     <p class="mb-4" style="color: #94a3b8;">Seret alat musik ke negara yang benar!</p>
+     <div id="l1-items" class="flex flex-wrap gap-3 mb-6"></div>
+     <div id="l1-targets" class="space-y-4 mb-6"></div>
+     <div id="l1-next" class="hidden text-center"><button onclick="startLevel(2)" class="px-8 py-3 rounded-xl font-bold" style="background: #f59e0b; color: #0f172a;">Level 2 →</button>
+     </div>
+    </div>
+   </div><!-- SCREEN: Level 2 - Matching -->
+   <div id="screen-level2" class="hidden h-full p-6 overflow-auto">
+    <div class="max-w-2xl mx-auto">
+     <div class="flex items-center justify-between mb-2">
+      <h2 class="text-xl font-bold" style="color: #f59e0b;">Level 2: Matching</h2><span id="l2-score" class="text-sm font-semibold px-3 py-1 rounded-full" style="background: #1e293b; color: #94a3b8;">0/2</span>
+     </div>
+     <div class="w-full rounded-full h-2 mb-6" style="background: #1e293b;">
+      <div id="l2-progress" class="h-2 rounded-full progress-fill" style="background: #f59e0b; width: 0%;"></div>
+     </div>
+     <p class="mb-4" style="color: #94a3b8;">Cocokkan alat musik dengan negaranya!</p>
+     <div class="grid grid-cols-2 gap-6 mb-6">
+      <div>
+       <p class="text-xs font-semibold mb-2" style="color: #64748b;">ALAT MUSIK</p>
+       <div id="l2-terms" class="space-y-3"></div>
+      </div>
+      <div>
+       <p class="text-xs font-semibold mb-2" style="color: #64748b;">NEGARA</p>
+       <div id="l2-defs" class="space-y-3"></div>
+      </div>
+     </div>
+     <div id="l2-next" class="hidden text-center"><button onclick="startLevel(3)" class="px-8 py-3 rounded-xl font-bold" style="background: #f59e0b; color: #0f172a;">Level 3 →</button>
+     </div>
+    </div>
+   </div><!-- SCREEN: Level 3 - Multiple Choice -->
+   <div id="screen-level3" class="hidden h-full p-6 overflow-auto">
+    <div class="max-w-2xl mx-auto">
+     <div class="flex items-center justify-between mb-2">
+      <h2 class="text-xl font-bold" style="color: #f59e0b;">Level 3: Pilihan Ganda</h2><span id="l3-score" class="text-sm font-semibold px-3 py-1 rounded-full" style="background: #1e293b; color: #94a3b8;">0/1</span>
+     </div>
+     <div class="w-full rounded-full h-2 mb-6" style="background: #1e293b;">
+      <div id="l3-progress" class="h-2 rounded-full progress-fill" style="background: #f59e0b; width: 0%;"></div>
+     </div>
+     <div id="l3-questions" class="space-y-6 mb-6"></div>
+     <div id="l3-next" class="hidden text-center"><button onclick="showScreen('result')" class="px-8 py-3 rounded-xl font-bold" style="background: #f59e0b; color: #0f172a;">Lihat Hasil →</button>
+     </div>
+    </div>
+   </div><!-- SCREEN: Result -->
+   <div id="screen-result" class="hidden flex flex-col items-center justify-center h-full p-6 text-center">
+    <div class="fade-up">
+     <div class="text-6xl mb-4" id="result-emoji">
+      🏆
+     </div>
+     <h2 class="text-3xl font-extrabold mb-2" style="color: #f59e0b;" id="result-title">Hasil Akhir</h2>
+     <p class="text-5xl font-extrabold mb-2" style="color: #e2e8f0;" id="result-score"></p>
+     <p class="mb-8" style="color: #94a3b8;" id="result-msg"></p><button onclick="resetGame()" class="px-8 py-3 rounded-xl font-bold" style="background: #f59e0b; color: #0f172a;"> <i data-lucide="rotate-ccw" style="width:18px;height:18px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Main Lagi </button>
+    </div>
+   </div>
+  </div>
+  <script>
+const gameData = {
+  materi: [
+    { negara: "Thailand", alat: "Ranat Ek", jenis: "Xilofon kayu" },
+    { negara: "Thailand", alat: "Khim", jenis: "Dulcimer atau simbal" },
+    { negara: "Vietnam", alat: "Dan Bau", jenis: "Zither satu dawai" },
+    { negara: "Vietnam", alat: "Dan Tranh", jenis: "Zither 16 senar" },
+    { negara: "Filipina", alat: "Kulintang", jenis: "Gong-gong kecil" },
+    { negara: "Filipina", alat: "Kalimba", jenis: "Alat petik tradisional" },
+    { negara: "Indonesia", alat: "Gamelan", jenis: "Ansambel gong-gong" },
+    { negara: "Indonesia", alat: "Angklung", jenis: "Alat tiup bambu" },
+    { negara: "Indonesia", alat: "Batik Wayang", jenis: "Boneka kulit" },
+    { negara: "Myanmar", alat: "Saung Gauk", jenis: "Harpa tradisional" },
+    { negara: "Myanmar", alat: "Pat Waing", jenis: "Drum melingkar" },
+    { negara: "Kamboja", alat: "Chapei Dang Veng", jenis: "Gitar tradisional" },
+    { negara: "Kamboja", alat: "Roneat Ek", jenis: "Xilofon kayu" },
+    { negara: "Laos", alat: "Khaen", jenis: "Alat tiup pipa" },
+    { negara: "Laos", alat: "Khong Wong Yai", jenis: "Gong melingkar besar" },
+    { negara: "Malaysia", alat: "Gamelan Terengganu", jenis: "Ensembel gong" },
+    { negara: "Malaysia", alat: "Rebab", jenis: "Alat gesek tradisional" },
+    { negara: "Singapura", alat: "Wayang Kulit", jenis: "Pertunjukan boneka" }
+  ],
+  level1: [
+    { item: "Ranat Ek", target: "Thailand" },
+    { item: "Dan Bau", target: "Vietnam" },
+    { item: "Kulintang", target: "Filipina" },
+    { item: "Gamelan", target: "Indonesia" },
+    { item: "Khaen", target: "Laos" },
+    { item: "Saung Gauk", target: "Myanmar" },
+    { item: "Chapei Dang Veng", target: "Kamboja" },
+    { item: "Rebab", target: "Malaysia" }
+  ],
+  level2: [
+    { term: "Gamelan", definition: "Indonesia" },
+    { term: "Saung Gauk", definition: "Myanmar" },
+    { term: "Chapei Dang Veng", definition: "Kamboja" },
+    { term: "Ranat Ek", definition: "Thailand" },
+    { term: "Khaen", definition: "Laos" },
+    { term: "Dan Bau", definition: "Vietnam" },
+    { term: "Kulintang", definition: "Filipina" },
+    { term: "Khong Wong Yai", definition: "Laos" }
+  ],
+  level3: [
+    { 
+      question: "Alat musik petik khas Vietnam yang hanya memiliki satu senar disebut...",
+      options: ["Dan Bau", "Khim", "Pin", "Piphat"],
+      answer: "Dan Bau"
+    },
+    { 
+      question: "Gamelan adalah alat musik tradisional khas negara mana?",
+      options: ["Thailand", "Indonesia", "Vietnam", "Malaysia"],
+      answer: "Indonesia"
+    },
+    { 
+      question: "Khaen adalah alat musik tiup pipa khas negara...",
+      options: ["Kamboja", "Myanmar", "Laos", "Filipina"],
+      answer: "Laos"
+    },
+    { 
+      question: "Kulintang adalah alat musik terdiri dari gong-gong kecil yang berasal dari...",
+      options: ["Thailand", "Vietnam", "Filipina", "Malaysia"],
+      answer: "Filipina"
+    },
+    { 
+      question: "Saung Gauk adalah harpa tradisional khas negara...",
+      options: ["Kamboja", "Myanmar", "Laos", "Brunei"],
+      answer: "Myanmar"
+    },
+    { 
+      question: "Angklung adalah alat musik tiup bambu tradisional dari...",
+      options: ["Laos", "Thailand", "Indonesia", "Vietnam"],
+      answer: "Indonesia"
+    },
+    { 
+      question: "Rebab adalah alat musik gesek tradisional khas...",
+      options: ["Malaysia", "Indonesia", "Filipina", "Kamboja"],
+      answer: "Malaysia"
+    },
+    { 
+      question: "Roneat Ek adalah xilofon kayu tradisional dari negara...",
+      options: ["Laos", "Kamboja", "Thailand", "Vietnam"],
+      answer: "Kamboja"
+    },
+    { 
+      question: "Dan Tranh adalah zither dengan berapa senar khas Vietnam?",
+      options: ["8 senar", "12 senar", "16 senar", "20 senar"],
+      answer: "16 senar"
+    },
+    { 
+      question: "Pat Waing adalah drum melingkar tradisional khas negara...",
+      options: ["Thailand", "Myanmar", "Laos", "Filipina"],
+      answer: "Myanmar"
+    }
+  ]
+};
+
+const flags = { Thailand: "🇹🇭", Vietnam: "🇻🇳", Filipina: "🇵🇭", Indonesia: "🇮🇩", Myanmar: "🇲🇲" };
+let scores = { l1: 0, l2: 0, l3: 0 };
+let l2Selected = { term: null, def: null };
+
+// --- Config ---
+const defaultConfig = {
+  game_title: "Alat Musik ASEAN",
+  background_color: "#0f172a",
+  surface_color: "#1e293b",
+  text_color: "#e2e8f0",
+  accent_color: "#f59e0b",
+  muted_color: "#94a3b8",
+  font_family: "Outfit",
+  font_size: 16
+};
+
+function applyConfig(config) {
+  const bg = config.background_color || defaultConfig.background_color;
+  const surface = config.surface_color || defaultConfig.surface_color;
+  const text = config.text_color || defaultConfig.text_color;
+  const accent = config.accent_color || defaultConfig.accent_color;
+  const muted = config.muted_color || defaultConfig.muted_color;
+  const font = config.font_family || defaultConfig.font_family;
+  const size = config.font_size || defaultConfig.font_size;
+  const title = config.game_title || defaultConfig.game_title;
+
+  document.getElementById('app').style.background = bg;
+  document.getElementById('title-text').textContent = title;
+  document.getElementById('title-text').style.color = accent;
+  document.body.style.fontFamily = `${font}, Outfit, sans-serif`;
+  document.body.style.fontSize = size + 'px';
+
+  // Apply accent to all accent-colored elements
+  document.querySelectorAll('[style*="color: #f59e0b"], [style*="color:#f59e0b"]').forEach(el => el.style.color = accent);
+  document.querySelectorAll('[style*="background: #f59e0b"], [style*="background:#f59e0b"]').forEach(el => {
+    el.style.background = accent;
+  });
+  document.querySelectorAll('[style*="background: #1e293b"], [style*="background:#1e293b"]').forEach(el => el.style.background = surface);
+  document.querySelectorAll('[style*="color: #94a3b8"], [style*="color:#94a3b8"]').forEach(el => el.style.color = muted);
+  document.querySelectorAll('[style*="color: #e2e8f0"], [style*="color:#e2e8f0"]').forEach(el => el.style.color = text);
+}
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => applyConfig(config),
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.accent_color || defaultConfig.accent_color, set: (v) => { config.accent_color = v; window.elementSdk.setConfig({ accent_color: v }); } },
+      { get: () => config.muted_color || defaultConfig.muted_color, set: (v) => { config.muted_color = v; window.elementSdk.setConfig({ muted_color: v }); } }
+    ],
+    borderables: [],
+    fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); } },
+    fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ["game_title", config.game_title || defaultConfig.game_title]
+  ])
+});
+
+// --- Toast ---
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  const inner = document.getElementById('toast-inner');
+  inner.textContent = msg;
+  inner.style.background = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#f59e0b';
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 1800);
+}
+
+// --- Screen Nav ---
+function showScreen(name) {
+  document.querySelectorAll('#app > div[id^="screen-"]').forEach(s => s.classList.add('hidden'));
+  document.getElementById('screen-' + name).classList.remove('hidden');
+  if (name === 'result') showResult();
+  lucide.createIcons();
+}
+
+// --- Materi ---
+function renderMateri() {
+  const el = document.getElementById('materi-list');
+  el.innerHTML = gameData.materi.map(m => `
+    <div class="materi-card rounded-xl p-5 flex items-center gap-4" style="background: #1e293b; border: 1px solid #334155;">
+      <span class="text-3xl">${flags[m.negara] || '🎶'}</span>
+      <div>
+        <p class="font-bold text-lg" style="color: #e2e8f0;">${m.alat}</p>
+        <p class="text-sm" style="color: #94a3b8;">${m.negara} · ${m.jenis}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+// --- Level 1: Drag & Drop ---
+function renderLevel1() {
+  scores.l1 = 0;
+  const items = document.getElementById('l1-items');
+  const targets = document.getElementById('l1-targets');
+  document.getElementById('l1-next').classList.add('hidden');
+  updateL1Score();
+
+  const shuffled = [...gameData.level1].sort(() => Math.random() - 0.5);
+  items.innerHTML = shuffled.map(d => `
+    <div class="drag-item px-5 py-3 rounded-xl font-semibold" draggable="true" data-item="${d.item}"
+      style="background: #f59e0b; color: #0f172a;" 
+      ontouchstart="handleTouchStart(event)" ontouchmove="handleTouchMove(event)" ontouchend="handleTouchEnd(event)">
+      🎵 ${d.item}
+    </div>
+  `).join('');
+
+  targets.innerHTML = gameData.level1.map(d => `
+    <div class="drop-zone rounded-xl p-5 flex items-center justify-between" data-target="${d.target}"
+      style="border: 2px dashed #334155; background: #1e293b; min-height: 64px;">
+      <span class="font-semibold" style="color: #e2e8f0;">${flags[d.target] || ''} ${d.target}</span>
+      <span class="text-sm" style="color: #64748b;">Seret ke sini</span>
+    </div>
+  `).join('');
+
+  // Desktop drag
+  items.querySelectorAll('.drag-item').forEach(el => {
+    el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', el.dataset.item); el.classList.add('dragging'); });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+  });
+  targets.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const item = e.dataTransfer.getData('text/plain');
+      checkL1Drop(item, zone);
+    });
+  });
+}
+
+// Touch support for drag
+let touchDragItem = null;
+function handleTouchStart(e) {
+  touchDragItem = e.target.closest('.drag-item');
+  touchDragItem.classList.add('dragging');
+}
+function handleTouchMove(e) { e.preventDefault(); }
+function handleTouchEnd(e) {
+  if (!touchDragItem) return;
+  touchDragItem.classList.remove('dragging');
+  const touch = e.changedTouches[0];
+  const dropEl = document.elementFromPoint(touch.clientX, touch.clientY);
+  const zone = dropEl?.closest('.drop-zone');
+  if (zone) checkL1Drop(touchDragItem.dataset.item, zone);
+  touchDragItem = null;
+}
+
+function checkL1Drop(item, zone) {
+  const match = gameData.level1.find(d => d.item === item && d.target === zone.dataset.target);
+  if (match) {
+    zone.classList.add('correct');
+    zone.innerHTML = `<span class="font-semibold" style="color: #22c55e;">${flags[match.target]} ${match.target}</span><span class="font-bold" style="color: #22c55e;">✓ ${match.item}</span>`;
+    zone.style.pointerEvents = 'none';
+    // Remove dragged item
+    document.querySelector(`.drag-item[data-item="${item}"]`)?.remove();
+    scores.l1++;
+    updateL1Score();
+    showToast('Benar! 🎉', 'success');
+    if (scores.l1 === gameData.level1.length) {
+      setTimeout(() => document.getElementById('l1-next').classList.remove('hidden'), 600);
+    }
+  } else {
+    zone.classList.add('wrong');
+    setTimeout(() => zone.classList.remove('wrong'), 400);
+    showToast('Coba lagi!', 'error');
+  }
+}
+
+function updateL1Score() {
+  document.getElementById('l1-score').textContent = `${scores.l1}/${gameData.level1.length}`;
+  document.getElementById('l1-progress').style.width = `${(scores.l1 / gameData.level1.length) * 100}%`;
+}
+
+// --- Level 2: Matching ---
+function renderLevel2() {
+  scores.l2 = 0;
+  l2Selected = { term: null, def: null };
+  document.getElementById('l2-next').classList.add('hidden');
+  updateL2Score();
+
+  const terms = document.getElementById('l2-terms');
+  const defs = document.getElementById('l2-defs');
+  const shuffledDefs = [...gameData.level2].sort(() => Math.random() - 0.5);
+
+  terms.innerHTML = gameData.level2.map(d => `
+    <div class="match-card rounded-xl p-4 text-center font-semibold" data-term="${d.term}" onclick="selectTerm(this)"
+      style="background: #1e293b; border: 2px solid #334155; color: #e2e8f0;">
+      🎵 ${d.term}
+    </div>
+  `).join('');
+
+  defs.innerHTML = shuffledDefs.map(d => `
+    <div class="match-card rounded-xl p-4 text-center font-semibold" data-def="${d.definition}" onclick="selectDef(this)"
+      style="background: #1e293b; border: 2px solid #334155; color: #e2e8f0;">
+      ${flags[d.definition] || ''} ${d.definition}
+    </div>
+  `).join('');
+}
+
+function selectTerm(el) {
+  if (el.classList.contains('matched')) return;
+  document.querySelectorAll('#l2-terms .match-card').forEach(c => c.style.boxShadow = '');
+  el.style.boxShadow = '0 0 0 3px #f59e0b';
+  l2Selected.term = el.dataset.term;
+  tryMatch();
+}
+function selectDef(el) {
+  if (el.classList.contains('matched')) return;
+  document.querySelectorAll('#l2-defs .match-card').forEach(c => c.style.boxShadow = '');
+  el.style.boxShadow = '0 0 0 3px #f59e0b';
+  l2Selected.def = el.dataset.def;
+  tryMatch();
+}
+function tryMatch() {
+  if (!l2Selected.term || !l2Selected.def) return;
+  const match = gameData.level2.find(d => d.term === l2Selected.term && d.definition === l2Selected.def);
+  if (match) {
+    document.querySelector(`[data-term="${match.term}"]`).classList.add('matched');
+    document.querySelector(`[data-def="${match.definition}"]`).classList.add('matched');
+    document.querySelector(`[data-term="${match.term}"]`).style.boxShadow = '';
+    document.querySelector(`[data-def="${match.definition}"]`).style.boxShadow = '';
+    scores.l2++;
+    updateL2Score();
+    showToast('Cocok! 🎉', 'success');
+    if (scores.l2 === gameData.level2.length) {
+      setTimeout(() => document.getElementById('l2-next').classList.remove('hidden'), 600);
+    }
+  } else {
+    showToast('Tidak cocok, coba lagi!', 'error');
+  }
+  l2Selected = { term: null, def: null };
+  document.querySelectorAll('.match-card:not(.matched)').forEach(c => c.style.boxShadow = '');
+}
+function updateL2Score() {
+  document.getElementById('l2-score').textContent = `${scores.l2}/${gameData.level2.length}`;
+  document.getElementById('l2-progress').style.width = `${(scores.l2 / gameData.level2.length) * 100}%`;
+}
+
+// --- Level 3: Multiple Choice ---
+function renderLevel3() {
+  scores.l3 = 0;
+  document.getElementById('l3-next').classList.add('hidden');
+  updateL3Score();
+
+  const container = document.getElementById('l3-questions');
+  container.innerHTML = gameData.level3.map((q, qi) => `
+    <div class="rounded-xl p-6 fade-up" style="background: #1e293b; border: 1px solid #334155;">
+      <p class="font-semibold mb-4" style="color: #e2e8f0;">${qi + 1}. ${q.question}</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${q.options.map(opt => `
+          <button class="option-btn rounded-xl px-4 py-3 text-left font-medium" data-q="${qi}" data-opt="${opt}"
+            style="background: #0f172a; border: 2px solid #334155; color: #e2e8f0;"
+            onclick="checkL3(this, ${qi}, '${opt.replace(/'/g, "\\'")}')">${opt}</button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function checkL3(btn, qi, opt) {
+  const q = gameData.level3[qi];
+  const allBtns = document.querySelectorAll(`[data-q="${qi}"]`);
+  allBtns.forEach(b => b.disabled = true);
+
+  if (opt === q.answer) {
+    btn.classList.add('correct-answer');
+    scores.l3++;
+    showToast('Benar! 🎉', 'success');
+  } else {
+    btn.classList.add('wrong-answer');
+    allBtns.forEach(b => { if (b.dataset.opt === q.answer) b.classList.add('correct-answer'); });
+    showToast('Jawaban salah!', 'error');
+  }
+  updateL3Score();
+  setTimeout(() => document.getElementById('l3-next').classList.remove('hidden'), 800);
+}
+
+function updateL3Score() {
+  document.getElementById('l3-score').textContent = `${scores.l3}/${gameData.level3.length}`;
+  document.getElementById('l3-progress').style.width = `${(scores.l3 / gameData.level3.length) * 100}%`;
+}
+
+// --- Result ---
+function showResult() {
+  const total = gameData.level1.length + gameData.level2.length + gameData.level3.length;
+  const got = scores.l1 + scores.l2 + scores.l3;
+  const pct = Math.round((got / total) * 100);
+  document.getElementById('result-score').textContent = `${got}/${total}`;
+  const emoji = pct === 100 ? '🏆' : pct >= 60 ? '⭐' : '💪';
+  const msg = pct === 100 ? 'Sempurna! Kamu ahli musik ASEAN!' : pct >= 60 ? 'Bagus! Terus belajar!' : 'Jangan menyerah, coba lagi!';
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-msg').textContent = msg;
+}
+
+function startLevel(n) {
+  showScreen('level' + n);
+  if (n === 1) renderLevel1();
+  if (n === 2) renderLevel2();
+  if (n === 3) renderLevel3();
+}
+
+function resetGame() {
+  scores = { l1: 0, l2: 0, l3: 0 };
+  showScreen('start');
+}
+
+// Init
+renderMateri();
+lucide.createIcons();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ef9e8880621ea7d',t:'MTc3Njc0ODQ5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
